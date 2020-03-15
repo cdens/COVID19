@@ -7,8 +7,8 @@ clc
 
 %% settings
 
-daysbefore = 3;
-day0cases = 250;
+daysbefore = 3; %days prior to crossing threshold to be included on plot
+day0cases = 250; %cases required for a country's day 0
 
 % setting important dates
 %Italy, France, Spain, USA
@@ -40,8 +40,6 @@ for c = 1:length(countries)
     data.dates{c} = databycountry{index}.dates;
     data.day0(c) = find(data.cases{c} >= day0cases,1);
 end
-cases = [];
-legendstr = {};
 
 %figuring out size
 maxlen = 0;
@@ -51,27 +49,32 @@ for c = 1:length(countries)
         maxlen = clen;
     end
 end
+
+%preallocating
+legendstr = {};
 cases = zeros(maxlen,length(countries));
 
 %pulling data into bar graph matrix
 for c = 1:length(data.day0)
     cdata = data.cases{c}(data.day0(c)-daysbefore:end);
-%     cdates = data.dates{c}(data.day0(c)-5:end);
     cases(1:length(cdata),c) = cdata;
-    legendstr{c} = [countries{c},' cases, Day 0 = ',datestr(data.dates{c}(data.day0(c)))];
+    legendstr{c} = [countries{c},' cases, Day 0 = ',datestr(data.dates{c}(data.day0(c)))]; %#ok<SAGROW>
 end
     
 
 %% plotting
 
-
-
 fig = figure(); clf
 ax = gca;
 hold on
 
-colors = [0.125    0.6940    0.1250; 0.8500    0.3250    0.0980; 0.4940    0.1840    0.5560; 0    0.4470    0.7410];
+%bar and line colors corresponding to countries
+colors = [0.125    0.6940    0.1250;... %green: Italy
+    0.8500    0.3250    0.0980; ... %red: France
+    0.4940    0.1840    0.5560; ... %purple: Spain
+    0    0.4470    0.7410]; %blue: USA
 
+%adding bar graph, adjusting color
 b = bar(ax,-daysbefore:size(cases,1)-1-daysbefore,cases);
 for c = 1:size(colors,1)
     b(c).FaceColor = colors(c,:);
@@ -92,29 +95,28 @@ end
 
 %% getting decay scales
 
-t = -daysbefore:19;
+
 ft = fittype('a*exp(x./b)');
 for c = 1:length(countries)
     cdata = cases(:,c);
     cdata(cdata == 0) = [];
     cdays = (0:length(cdata)-1) - daysbefore;
     cfit = fit(cdays',cdata,'exp1');
-%     cfit = fit(cdays',cdata,fittype([num2str(day0cases),'.*exp(b.*x)']));
     decayscale(c) = 1./cfit.b;
     coeff(c) = cfit.a;
 end
 
+% Adding text to plot- uncomment lines to include best-fit plots on figure.
+% WARNING- this will definitely freak people out if you share it (why I
+% left it off the post)
+% t = -daysbefore:19;
 for c = 1:length(countries)
 %     plot(t,coeff(c).*exp(t./decayscale(c)),'color',colors(c,:),'linestyle',':');
     plottext{c} = [countries{c},': \alpha = ',num2str(decayscale(c),'%3.2f')];
 end
 text(ax,-2,15000,'C = C_oe^{d/\alpha}','fontsize',14)
 text(ax,-2,12000,plottext,'fontsize',14)
-%population density
-%USA- 90 /mi^2
-%France- 119 /km^2
-%Spain- 
-%Italy- 
+
 
 
 %% plot formatting
@@ -126,5 +128,5 @@ grid on
 legend(ax,b,legendstr,'location','northwest')
 ax.YAxis.Exponent = 0;
 
-%%
+%% saving figure
 saveas(fig,'COVID19_CountryComparison','png')
