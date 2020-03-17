@@ -22,14 +22,19 @@ quarantinestart = [datenum(2020,3,9);datenum(2020,3,15);datenum(2020,3,15);NaN];
 % people
 
 %% pulling data
-
 %data link https://docs.google.com/spreadsheets/d/1avGWWl1J19O_Zm0NGTGy2E-fOG05i4ljRfjl87P7FiA/edit?ts=5e5e9222#gid=0
-covid_all = GetGoogleSpreadsheet('1avGWWl1J19O_Zm0NGTGy2E-fOG05i4ljRfjl87P7FiA');
-T = cell2table(covid_all(2:end,:),'VariableNames',covid_all(1,:));
-writetable(T,'CovidData_Newest.csv')
+%alternate (excel sheet) https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide
+%NOTE: due to difficulty accessing (high access load?) HTTP requests tend
+%to fail a bunch of times until error 429 (too many requests) is returned.
+%Wait a few minutes and try again, after a couple times it works. 
 
-covid = readcoviddata('CovidData_Newest.csv');
-[allcountries,databycountry] = resortdata(covid);
+% covid_all = GetGoogleSpreadsheet('1avGWWl1J19O_Zm0NGTGy2E-fOG05i4ljRfjl87P7FiA');
+% T = cell2table(covid_all(2:end,:),'VariableNames',covid_all(1,:));
+% writetable(T,'CovidData_Newest.csv')
+
+% covid = readcoviddata('Spreadsheets/COVID19_17MAR.csv');
+% covid = pullgitdata('Confirmed'); %Confirmed, Recovered, or Deaths
+% [allcountries,databycountry] = resortdata(covid);
 
 %% organizing bars
 
@@ -80,7 +85,7 @@ for c = 1:size(colors,1)
     b(c).FaceColor = colors(c,:);
 end
 
-ylim(ax,[0,22000])
+% ylim(ax,[0,25000])
 
 %plotting quarantine dates
 ylims = ax.YLim;
@@ -88,17 +93,26 @@ offsets = [-0.3:0.2:0.3];
 for c = 1:length(countries)
     cminordate = minorquarantine(c) - data.dates{c}(data.day0(c));
     cmajordate = quarantinestart(c) - data.dates{c}(data.day0(c));
-    plot(ax,[cminordate,cminordate]+offsets(c),ylims,'color',colors(c,:),'linewidth',1,'linestyle','--')
-    plot(ax,[cmajordate,cmajordate]+offsets(c),ylims,'color',colors(c,:),'linewidth',1,'linestyle','-')
+%     plot(ax,[cminordate,cminordate]+offsets(c),ylims,'color',colors(c,:),'linewidth',1,'linestyle','--')
+    plot(ax,[cmajordate,cmajordate]+offsets(c),ylims,'color',colors(c,:),'linewidth',2,'linestyle','--')
 end
 
 
 %% getting decay scales
 
+%only calculate decay scale over period for which all countries have data
+maxlen = 1E9;
+for c = 1:length(countries)
+    cdata = cases(:,c);
+    cdata(cdata == 0) = [];
+    if length(cdata) < maxlen
+        maxlen = length(cdata);
+    end
+end
 
 ft = fittype('a*exp(x./b)');
 for c = 1:length(countries)
-    cdata = cases(:,c);
+    cdata = cases(1:maxlen,c);
     cdata(cdata == 0) = [];
     cdays = (0:length(cdata)-1) - daysbefore;
     cfit = fit(cdays',cdata,'exp1');
@@ -109,12 +123,12 @@ end
 % Adding text to plot- uncomment lines to include best-fit plots on figure.
 % WARNING- this will definitely freak people out if you share it (why I
 % left it off the post)
-% t = -daysbefore:19;
+t = -daysbefore:maxlen-daysbefore-1;
 for c = 1:length(countries)
-%     plot(t,coeff(c).*exp(t./decayscale(c)),'color',colors(c,:),'linestyle',':');
+    plot(t,coeff(c).*exp(t./decayscale(c)),'color',colors(c,:),'linestyle',':','linewidth',2);
     plottext{c} = [countries{c},': \alpha = ',num2str(decayscale(c),'%3.2f')];
 end
-text(ax,-2,15000,'C = C_oe^{d/\alpha}','fontsize',14)
+text(ax,-2,16000,'C = C_oe^{d/\alpha}','fontsize',14)
 text(ax,-2,12000,plottext,'fontsize',14)
 
 
