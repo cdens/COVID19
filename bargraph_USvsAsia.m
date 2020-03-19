@@ -128,7 +128,7 @@ ylim([0,40000])
 
 %% plot formatting
 ylabel(ax,'Confirmed COVID-19 Cases')
-% ylim(ax,ylims)
+ylim(ax,[0,35000])
 xlabel(ax,['Days Since Exceeding ',num2str(day0cases),' Cases'])
 set(ax,'fontsize',14,'xtick',0:5:500)
 grid on
